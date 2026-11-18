@@ -7,3 +7,9 @@ A mobile client for a self-hosted Playbox media server. Browse the library, open
 - iOS builds run in GitHub Actions and produce an unsigned `.ipa` for sideloading (SideStore/AltStore).
 
 Builds run on GitHub Actions (macOS runner).
+
+## Install (SideStore / AltStore)
+
+Add this source: `https://raw.githubusercontent.com/RishabhChitale/playbox-app/main/apps.json`
+
+Current release: v0.1.0 (`playbox-0.1.0.ipa`).
