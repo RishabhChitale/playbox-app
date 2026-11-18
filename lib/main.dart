@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:media_kit/media_kit.dart';
 
-import 'screens/library_screen.dart';
+import 'screens/home_shell.dart';
 
 const pageColor = Color(0xFF101C33);
 const primaryColor = Color(0xFF2D8CFF);
@@ -31,7 +31,7 @@ class PlayboxApp extends StatelessWidget {
             backgroundColor: pageColor, surfaceTintColor: Colors.transparent),
         useMaterial3: true,
       ),
-      home: const LibraryScreen(),
+      home: const HomeShell(),
     );
   }
 }

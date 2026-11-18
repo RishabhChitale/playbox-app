@@ -7,7 +7,9 @@ import 'show_screen.dart';
 import 'widgets.dart';
 
 class LibraryScreen extends StatefulWidget {
-  const LibraryScreen({super.key});
+  final PlayboxApi api;
+  final VoidCallback? onSettingsChanged;
+  const LibraryScreen({super.key, required this.api, this.onSettingsChanged});
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
@@ -22,7 +24,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<(PlayboxApi, List<LibraryItem>)> _load() async {
-    final api = await PlayboxApi.load();
+    final api = widget.api;
     return (api, await api.library());
   }
 
@@ -36,7 +38,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
             onPressed: () async {
               await Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const SettingsScreen()));
-              _reload();
+              if (widget.onSettingsChanged != null) {
+                widget.onSettingsChanged!();
+              } else {
+                _reload();
+              }
             },
           ),
         ]),

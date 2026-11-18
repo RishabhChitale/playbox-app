@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../downloads_api.dart';
+import 'add_sheet.dart';
 import 'player_screen.dart';
 import 'widgets.dart';
 
@@ -112,6 +114,19 @@ class _ShowScreenState extends State<ShowScreen> {
         ),
       );
 
+  Future<void> _add(EpisodeInfo e, String title) async {
+    final code = 'S${_season!.toString().padLeft(2, '0')}E'
+        '${e.number.toString().padLeft(2, '0')}';
+    final ctx = SearchContext(
+        '${widget.item.name} $code', 'tv', widget.item.id, e.airDate);
+    final added = await showAddSheet(context, widget.api, ctx,
+        label: '${widget.item.name} $code');
+    if (added && mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Added to Downloads')));
+    }
+  }
+
   Widget _row(EpisodeInfo e) {
     final dl = _downloaded(_season!, e.number);
     final title = 'S${_season!.toString().padLeft(2, '0')}E'
@@ -122,7 +137,7 @@ class _ShowScreenState extends State<ShowScreen> {
       if (dl == null) 'not downloaded',
     ].join(' · ');
     return Opacity(
-      opacity: dl == null ? 0.4 : 1,
+      opacity: dl == null ? 0.75 : 1,
       child: ListTile(
         leading: SizedBox(
             width: 80,
@@ -132,7 +147,11 @@ class _ShowScreenState extends State<ShowScreen> {
         title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(sub),
         trailing: dl == null
-            ? null
+            ? TextButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Add'),
+                onPressed: () => _add(e, title),
+              )
             : IconButton(
                 icon: const Icon(Icons.play_circle_fill, size: 32),
                 color: Theme.of(context).colorScheme.primary,

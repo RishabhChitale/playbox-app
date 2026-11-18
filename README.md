@@ -12,4 +12,4 @@ Builds run on GitHub Actions (macOS runner).
 
 Add this source: `https://raw.githubusercontent.com/RishabhChitale/playbox-app/main/apps.json`
 
-Current release: v0.1.0 (`playbox-0.1.0.ipa`).
+Current release: v0.2.0 (`playbox-0.2.0.ipa`). Adds Search, a title page with Add, and a Downloads tab.

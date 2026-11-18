@@ -9,10 +9,15 @@ const _prefKey = 'server_url';
 class ApiException implements Exception {
   final String message;
   final bool unreachable;
-  ApiException(this.message, {this.unreachable = false});
+  /// The server refused the request (profile or permission), as opposed to failing.
+  final bool refused;
+  ApiException(this.message, {this.unreachable = false, this.refused = false});
   @override
   String toString() => message;
 }
+
+bool looksRefused(String m) =>
+    RegExp(r'not allowed|forbidden|permission|profile', caseSensitive: false).hasMatch(m);
 
 class Episode {
   final int season;
@@ -82,7 +87,10 @@ const _tvSeasonEpisodes = r'''query TvSeasonEpisodes($tvId: Int!, $season: Int!)
 
 class PlayboxApi {
   final String baseUrl;
-  PlayboxApi(String url) : baseUrl = url.trim().replaceAll(RegExp(r'/+$'), '');
+  final http.Client _client;
+  PlayboxApi(String url, {http.Client? client})
+      : baseUrl = url.trim().replaceAll(RegExp(r'/+$'), ''),
+        _client = client ?? http.Client();
 
   static Future<PlayboxApi> load() async {
     final p = await SharedPreferences.getInstance();
@@ -99,7 +107,7 @@ class PlayboxApi {
   Future<Map<String, dynamic>> query(String q, [Map<String, dynamic>? vars]) async {
     final http.Response res;
     try {
-      res = await http
+      res = await _client
           .post(
             Uri.parse('$baseUrl/graphql'),
             headers: {'Content-Type': 'application/json', 'X-Playbox-Locked': '0'},
@@ -112,13 +120,18 @@ class PlayboxApi {
     if (res.statusCode == 401) {
       throw ApiException('The server asked for a login (401).');
     }
+    if (res.statusCode == 403) {
+      throw ApiException('The server refused this request for the current profile.',
+          refused: true);
+    }
     if (res.statusCode != 200) {
       throw ApiException('Server answered HTTP ${res.statusCode}.');
     }
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     final errors = body['errors'];
     if (errors is List && errors.isNotEmpty) {
-      throw ApiException('${errors.first['message']}');
+      final msg = '${errors.first['message']}';
+      throw ApiException(msg, refused: looksRefused(msg));
     }
     return body['data'] as Map<String, dynamic>;
   }
