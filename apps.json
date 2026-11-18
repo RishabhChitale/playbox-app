@@ -1,0 +1,22 @@
+{
+  "name": "Playbox",
+  "identifier": "dev.playbox.source",
+  "apps": [
+    {
+      "name": "Playbox",
+      "bundleIdentifier": "dev.playbox.playbox",
+      "developerName": "Playbox",
+      "subtitle": "Mobile client for a self-hosted Playbox media server",
+      "localizedDescription": "Browse and play media from your self-hosted Playbox server.",
+      "iconURL": "https://raw.githubusercontent.com/RishabhChitale/playbox-app/main/assets/icon.png",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "date": "2026-11-18",
+          "downloadURL": "https://github.com/RishabhChitale/playbox-app/releases/latest/download/playbox-1.0.0.ipa",
+          "minOSVersion": "13.0"
+        }
+      ]
+    }
+  ]
+}
