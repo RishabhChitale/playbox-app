@@ -13,11 +13,19 @@
       "localizedDescription": "Browse and play media from your self-hosted Playbox server.",
       "iconURL": "https://raw.githubusercontent.com/RishabhChitale/playbox-app/main/assets/icon.png",
       "category": "entertainment",
-      "version": "0.2.0",
-      "versionDate": "2026-11-18T00:00:00Z",
-      "downloadURL": "https://github.com/RishabhChitale/playbox-app/releases/download/v0.2.0/playbox-0.2.0.ipa",
+      "version": "0.3.0",
+      "versionDate": "2026-11-18T12:00:00Z",
+      "downloadURL": "https://github.com/RishabhChitale/playbox-app/releases/download/v0.3.0/playbox-0.3.0.ipa",
       "size": 14354323,
       "versions": [
+        {
+          "version": "0.3.0",
+          "buildVersion": "3",
+          "date": "2026-11-18T12:00:00Z",
+          "downloadURL": "https://github.com/RishabhChitale/playbox-app/releases/download/v0.3.0/playbox-0.3.0.ipa",
+          "size": 14354323,
+          "minOSVersion": "13.0"
+        },
         {
           "version": "0.2.0",
           "buildVersion": "2",

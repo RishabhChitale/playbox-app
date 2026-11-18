@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
 import '../downloads_api.dart';
+import 'widgets.dart';
 
 const noReleaseMessage =
     'No release matched this episode. It may not be out yet, or nothing passed the quality filters.';
@@ -68,7 +69,7 @@ class _AddSheetState extends State<AddSheet> {
   }
 
   Widget _sourceCard(TorrentSource s) => Card(
-        color: Colors.white10,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -78,10 +79,12 @@ class _AddSheetState extends State<AddSheet> {
                 '${s.resolution > 0 ? ' · ${s.resolution}p' : ''}'
                 '${s.codec != null && s.codec!.isNotEmpty ? ' · ${s.codec}' : ''}'),
             if (s.qualityNote != null && s.qualityNote!.isNotEmpty)
-              Text(s.qualityNote!, style: const TextStyle(color: Colors.amber)),
+              Text(s.qualityNote!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.tertiary)),
             if (s.packTitle != null && s.packTitle!.isNotEmpty)
               Text('One file from the pack ${s.packTitle}; only this episode is downloaded.',
-                  style: const TextStyle(color: Colors.white70)),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ]),
         ),
       );
@@ -96,8 +99,14 @@ class _AddSheetState extends State<AddSheet> {
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
                 return const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Center(child: CircularProgressIndicator()));
+                    padding: EdgeInsets.all(24),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Skeleton(height: 24),
+                      SizedBox(height: 12),
+                      Skeleton(height: 96),
+                      SizedBox(height: 12),
+                      Skeleton(height: 44),
+                    ]));
               }
               if (snap.hasError) {
                 final e = snap.error;
@@ -133,7 +142,8 @@ class _AddSheetState extends State<AddSheet> {
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Text(identical(chosen, pick.best) ? 'Best source' : 'Selected source',
-                      style: const TextStyle(color: Colors.white70)),
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   _sourceCard(chosen),
                   if (_addError != null)
                     Padding(

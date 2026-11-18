@@ -35,7 +35,7 @@ class _HomeShellState extends State<HomeShell> {
           if (!snap.hasData) {
             return snap.hasError
                 ? Scaffold(body: ErrorView(message: '${snap.error}', onRetry: _reload))
-                : const Scaffold(body: Center(child: CircularProgressIndicator()));
+                : const Scaffold(body: SafeArea(child: SkeletonGrid()));
           }
           final api = snap.data!;
           return Scaffold(

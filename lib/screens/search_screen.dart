@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../app_state.dart';
 import '../downloads_api.dart';
 import 'add_sheet.dart';
 import 'player_screen.dart';
@@ -50,12 +51,14 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ),
         body: _results == null
-            ? const Center(child: Text('Search for a movie or show to add.'))
+            ? const EmptyView(
+                message: 'Search for a movie or show to add.',
+                icon: Icons.search)
             : FutureBuilder<List<SearchResult>>(
                 future: _results,
                 builder: (context, snap) {
                   if (snap.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const SkeletonGrid();
                   }
                   if (snap.hasError) {
                     final e = snap.error;
@@ -113,7 +116,9 @@ class _ResultTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text(r.title, maxLines: 2, overflow: TextOverflow.ellipsis),
           Text('${r.isMovie ? 'Movie' : 'Show'}${r.year != null ? ' · ${r.year}' : ''}',
-              style: const TextStyle(color: Colors.white60, fontSize: 12)),
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12)),
         ]),
       );
 }
@@ -153,7 +158,7 @@ class _TitleScreenState extends State<TitleScreen> {
         if (snap.connectionState != ConnectionState.done) {
           return Scaffold(
               appBar: AppBar(title: Text(r.title)),
-              body: const Center(child: CircularProgressIndicator()));
+              body: const SkeletonList(count: 4));
         }
         if (snap.hasError) {
           return Scaffold(
@@ -176,11 +181,38 @@ class _TitleScreenState extends State<TitleScreen> {
   }
 }
 
-class _MovieBody extends StatelessWidget {
+class _MovieBody extends StatefulWidget {
   final PlayboxApi api;
   final SearchResult r;
   final LibraryItem? owned;
   const _MovieBody({required this.api, required this.r, required this.owned});
+  @override
+  State<_MovieBody> createState() => _MovieBodyState();
+}
+
+class _MovieBodyState extends State<_MovieBody> {
+  PlayboxApi get api => widget.api;
+  SearchResult get r => widget.r;
+  LibraryItem? get owned => widget.owned;
+  String get _key => 'movie:${r.id}';
+
+  Future<void> _fav() async {
+    await AppScope.of(context).store.toggleFavorite(_key);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _play() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => PlayerScreen(
+              title: r.title,
+              url: api.streamUrl(owned!.movieSceneId!),
+              sceneId: owned!.movieSceneId,
+              api: api)),
+    );
+    if (mounted) setState(() {});
+  }
 
   Future<void> _add(BuildContext context) async {
     final term = r.year != null ? '${r.title} ${r.year}' : r.title;
@@ -194,8 +226,16 @@ class _MovieBody extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(r.title)),
+  Widget build(BuildContext context) {
+    final fav = AppScope.of(context).store.isFavorite(_key);
+    return Scaffold(
+        appBar: AppBar(title: Text(r.title), actions: [
+          IconButton(
+            tooltip: fav ? 'Remove from favorites' : 'Add to favorites',
+            icon: Icon(fav ? Icons.favorite : Icons.favorite_border),
+            onPressed: _fav,
+          ),
+        ]),
         body: ListView(padding: const EdgeInsets.all(16), children: [
           Center(
             child: SizedBox(
@@ -214,12 +254,7 @@ class _MovieBody extends StatelessWidget {
             FilledButton.icon(
               icon: const Icon(Icons.play_arrow),
               label: const Text('Play'),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => PlayerScreen(
-                        title: r.title, url: api.streamUrl(owned!.movieSceneId!))),
-              ),
+              onPressed: _play,
             )
           else
             FilledButton.icon(
@@ -228,5 +263,6 @@ class _MovieBody extends StatelessWidget {
               onPressed: () => _add(context),
             ),
         ]),
-      );
+    );
+  }
 }

@@ -109,7 +109,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     Widget body;
     final items = _items;
     if (items == null && _error == null) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const SkeletonList(count: 4);
     } else if (items == null) {
       final e = _error;
       body = ErrorView(
@@ -119,10 +119,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           onRetry: _refresh,
           showSettings: e is ApiException && e.unreachable);
     } else if (items.isEmpty) {
-      body = ListView(children: const [
-        SizedBox(height: 160),
-        Center(child: Text('No downloads yet.')),
-      ]);
+      body = const EmptyView(
+          message: 'No downloads yet.',
+          hint: 'Add a movie or episode and it shows up here.',
+          icon: Icons.download_outlined);
     } else {
       body = ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -168,6 +168,7 @@ class DownloadTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final lines = <Widget>[];
     Color? note;
     String? status;
@@ -175,10 +176,10 @@ class DownloadTile extends StatelessWidget {
       status = 'Fetching file list';
     } else if (d.corruptReason != null) {
       status = "This file downloaded, but it's corrupt and won't play: ${d.corruptReason}.";
-      note = Colors.redAccent;
+      note = scheme.error;
     } else if (d.libraryError != null) {
       status = "Downloaded, but it couldn't be added to your library: ${d.libraryError}";
-      note = Colors.redAccent;
+      note = scheme.error;
     } else if (d.done && d.sceneId == null) {
       status = 'Adding to your library...';
     } else if (d.done) {
@@ -189,7 +190,7 @@ class DownloadTile extends StatelessWidget {
           : 'Paused';
     } else if (d.stalled) {
       status = 'No data has arrived for a few minutes; the seeders may be gone.';
-      note = Colors.amber;
+      note = scheme.tertiary;
     } else {
       final speed = formatSpeed(d.downloadSpeed ?? 0);
       status = '$speed · ${formatEta(d.etaSeconds)} · ${d.peers} peers';
@@ -203,16 +204,16 @@ class DownloadTile extends StatelessWidget {
       lines.add(Text(
           '${formatBytes(d.completedBytes)} of ${formatBytes(d.sizeBytes)} '
           '(${(d.fraction * 100).round()}%)',
-          style: const TextStyle(color: Colors.white60, fontSize: 12)));
+          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)));
     }
-    lines.add(Text(status, style: TextStyle(color: note ?? Colors.white70, fontSize: 13)));
+    lines.add(Text(status, style: TextStyle(color: note ?? scheme.onSurface, fontSize: 13)));
     if (d.autoRetryNote != null && d.autoRetryNote!.isNotEmpty) {
       lines.add(Text(d.autoRetryNote!,
-          style: const TextStyle(color: Colors.white54, fontSize: 12)));
+          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12)));
     }
     final canPlay = d.done && d.sceneId != null && d.corruptReason == null;
     return Card(
-      color: Colors.white10,
+      color: scheme.surfaceContainerHighest,
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 4, 6),
@@ -227,7 +228,11 @@ class DownloadTile extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                     builder: (_) =>
-                        PlayerScreen(title: d.name, url: api.streamUrl(d.sceneId!))),
+                        PlayerScreen(
+                        title: d.name,
+                        url: api.streamUrl(d.sceneId!),
+                        sceneId: d.sceneId,
+                        api: api)),
               ),
             )
           else if (!d.done && d.paused)

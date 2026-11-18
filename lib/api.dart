@@ -5,6 +5,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const defaultServerUrl = 'http://100.121.45.79:9998';
 const _prefKey = 'server_url';
+const _apiKeyPref = 'api_key';
+
+const _findCategories = '''query FindCategories(\$filter: FindFilterType, \$category_filter: CategoryFilterType) {
+  findCategories(filter: \$filter, category_filter: \$category_filter) {
+    count categories { id name parent_category { id } child_categories { id name } } } }''';
+const _sceneIdsInCategory = r'''query SceneIdsInCategory($id: ID!) {
+  findScenes(scene_filter: {categories: [$id]}, filter: {per_page: -1}) { scenes { id } } }''';
+const _saveActivity = r'''mutation SaveActivity($id: ID!, $resume: Float, $dur: Float) {
+  sceneSaveActivity(id: $id, resume_time: $resume, playDuration: $dur) }''';
 
 class ApiException implements Exception {
   final String message;
@@ -47,6 +56,14 @@ class LibraryItem {
     this.movieSceneId,
   });
   bool get isMovie => movieSceneId != null;
+  String get key => '${isMovie ? 'movie' : 'tv'}:$id';
+}
+
+class Category {
+  final String id;
+  final String name;
+  final List<Category> children;
+  Category(this.id, this.name, [this.children = const []]);
 }
 
 class SeasonInfo {
@@ -88,13 +105,15 @@ const _tvSeasonEpisodes = r'''query TvSeasonEpisodes($tvId: Int!, $season: Int!)
 class PlayboxApi {
   final String baseUrl;
   final http.Client _client;
-  PlayboxApi(String url, {http.Client? client})
+  final String? apiKey;
+  PlayboxApi(String url, {http.Client? client, this.apiKey})
       : baseUrl = url.trim().replaceAll(RegExp(r'/+$'), ''),
         _client = client ?? http.Client();
 
   static Future<PlayboxApi> load() async {
     final p = await SharedPreferences.getInstance();
-    return PlayboxApi(p.getString(_prefKey) ?? defaultServerUrl);
+    return PlayboxApi(p.getString(_prefKey) ?? defaultServerUrl,
+        apiKey: p.getString(_apiKeyPref));
   }
 
   static Future<void> saveUrl(String url) async {
@@ -110,7 +129,11 @@ class PlayboxApi {
       res = await _client
           .post(
             Uri.parse('$baseUrl/graphql'),
-            headers: {'Content-Type': 'application/json', 'X-Playbox-Locked': '0'},
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Playbox-Locked': '0',
+              if (apiKey != null && apiKey!.isNotEmpty) 'ApiKey': apiKey!,
+            },
             body: jsonEncode({'query': q, 'variables': vars ?? {}}),
           )
           .timeout(const Duration(seconds: 15));
@@ -200,5 +223,36 @@ class PlayboxApi {
       for (final e in d)
         EpisodeInfo(e['number'], e['name'], e['airDate'], e['stillURL'], e['runtime'])
     ];
+  }
+
+  /// Top-level categories (those without a parent), in server order.
+  Future<List<Category>> categories() async {
+    final d = (await query(_findCategories, {
+      'filter': {'per_page': -1, 'sort': 'name'}
+    }))['findCategories']['categories'] as List;
+    return [
+      for (final c in d)
+        if (c['parent_category'] == null)
+          Category('${c['id']}', '${c['name']}', [
+            for (final k in (c['child_categories'] as List? ?? []))
+              Category('${k['id']}', '${k['name']}')
+          ])
+    ];
+  }
+
+  /// Scene ids under a category's bound directories.
+  Future<Set<String>> sceneIdsInCategory(String id) async {
+    final d = (await query(_sceneIdsInCategory, {'id': id}))['findScenes']['scenes'] as List;
+    return {for (final s in d) '${s['id']}'};
+  }
+
+  /// Best-effort resume sync; failures are swallowed (local store is the source of truth).
+  Future<bool> saveActivity(String sceneId, double resumeSeconds, double playSeconds) async {
+    try {
+      await query(_saveActivity, {'id': sceneId, 'resume': resumeSeconds, 'dur': playSeconds});
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 }

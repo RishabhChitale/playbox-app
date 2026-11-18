@@ -1,12 +1,22 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../api.dart';
+import '../app_state.dart';
+import '../local_store.dart';
+
 class PlayerScreen extends StatefulWidget {
   final String title;
   final String url;
-  const PlayerScreen({super.key, required this.title, required this.url});
+  /// When set, the position is saved and playback resumes from it.
+  final String? sceneId;
+  final PlayboxApi? api;
+  const PlayerScreen(
+      {super.key, required this.title, required this.url, this.sceneId, this.api});
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
@@ -18,10 +28,43 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _showControls = true;
   bool _landscape = false;
   bool _fellBack = false;
+  LocalStore? _store;
+  Timer? _saveTimer;
+  int _lastSavedMs = -1;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _store ??= AppScope.of(context).store;
+  }
+
+  /// Saves the position locally and, best effort, to the server.
+  void _save({bool sync = false}) {
+    final id = widget.sceneId;
+    final store = _store;
+    if (id == null || store == null) return;
+    final pos = _player.state.position.inMilliseconds;
+    final dur = _player.state.duration.inMilliseconds;
+    if (dur <= 0 || pos == _lastSavedMs) return;
+    _lastSavedMs = pos;
+    store.saveProgress(id, pos, dur);
+    if (sync) widget.api?.saveActivity(id, pos / 1000, 0);
+  }
+
+  Future<void> _resume() async {
+    final id = widget.sceneId;
+    final store = _store;
+    if (id == null || store == null) return;
+    final from = store.progress[id]?.resumeFrom ?? Duration.zero;
+    if (from == Duration.zero) return;
+    await _player.stream.duration.firstWhere((d) => d > Duration.zero);
+    await _player.seek(from);
+  }
 
   @override
   void initState() {
     super.initState();
+    _saveTimer = Timer.periodic(const Duration(seconds: 5), (_) => _save());
     _player.stream.error.listen((e) {
       if (!_fellBack && !widget.url.endsWith('.mp4')) {
         // Direct stream failed: try the server's live remux (MP4/AAC).
@@ -32,10 +75,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
       if (mounted) setState(() => _error = e);
     });
     _player.open(Media(widget.url));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _resume());
   }
 
   @override
   void dispose() {
+    _saveTimer?.cancel();
+    _save(sync: true);
     _player.dispose();
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -90,7 +136,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => Theme(
+        data: ThemeData.dark(),
+        child: _scaffold(context),
+      );
+
+  Widget _scaffold(BuildContext context) => Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
           child: Stack(children: [
